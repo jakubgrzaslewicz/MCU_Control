@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">MCU Control</string>
+
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+
+    <string name="action_settings">Ustawienia</string>
+    <string name="title_activity_add_device">Dodaj urządzenie</string>
+    <string name="wyszukiwanie_urz_dze">Wyszukiwanie urządzeń</string>
+    <string name="title_activity_register_device">Rejestracja urządzenia</string>
+</resources>
