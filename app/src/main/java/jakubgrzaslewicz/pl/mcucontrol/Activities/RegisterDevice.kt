@@ -3,11 +3,8 @@ package jakubgrzaslewicz.pl.mcucontrol.Activities
 import android.content.Context
 import android.net.wifi.WifiManager
 import android.os.Bundle
-import android.support.design.widget.Snackbar
-import android.support.v7.app.AppCompatActivity
 import android.util.Log
 import android.widget.Toast
-import jakubgrzaslewicz.pl.mcucontrol.Classes.McuApiService
 import jakubgrzaslewicz.pl.mcucontrol.Models.DeviceInfo
 import jakubgrzaslewicz.pl.mcucontrol.R
 
@@ -18,14 +15,19 @@ import retrofit2.Callback
 import retrofit2.Response
 import android.net.wifi.WifiConfiguration
 import android.os.Handler
-import android.net.NetworkInfo
 import android.net.ConnectivityManager
-import android.net.wifi.WifiInfo
 import android.support.v4.content.ContextCompat
-import com.baoyachi.stepview.VerticalStepView
+import com.google.gson.Gson
+import jakubgrzaslewicz.pl.mcucontrol.Classes.Activity
+import jakubgrzaslewicz.pl.mcucontrol.Classes.RandomString
+import jakubgrzaslewicz.pl.mcucontrol.Models.ConfigureResponse
+import jakubgrzaslewicz.pl.mcucontrol.Models.ConnectToApResponse
+import okhttp3.MediaType
+import okhttp3.RequestBody
+import java.security.SecureRandom
 
 
-class RegisterDevice : AppCompatActivity() {
+class RegisterDevice : Activity() {
     var SSID: String = ""
     var wifi: WifiManager? = null
     var McuApiService = jakubgrzaslewicz.pl.mcucontrol.Classes.McuApiService()
@@ -34,10 +36,16 @@ class RegisterDevice : AppCompatActivity() {
         setContentView(R.layout.activity_register_device)
         setSupportActionBar(toolbar)
         SSID = intent.getStringExtra("SSID")
-        if (SSID.isEmpty())
-        //finish()
+        if (!SSID.isEmpty())
             deviceSSID.text = SSID
+        else
+            finish()
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
+
+
+        val s = "{\"MCU_HUB_CLIENT\":{\"AP_SSID\":\"MCU-HUB-Client-3P3750\",\"JSON-API-VER\":\"1.0\"},\"DEVICE\":{\"CHIP_ID\":9068572,\"FLASH_MODE\":2,\"DEV_VER\":0,\"FLASH_SPEED\":40000000,\"MINOR_VER\":1,\"FLASH_SIZE\":4096,\"MAJOR_VER\":2,\"FLASH_ID\":1458208}}"
+        val obj = Gson().fromJson<DeviceInfo>(s, DeviceInfo::class.java)
+        Log.d(TAG, obj.Client?.Ap_Ssid)
 
         InitializeProgress()
         InitializeWifiManager()
@@ -49,6 +57,7 @@ class RegisterDevice : AppCompatActivity() {
         list0.add("Connect with device")
         list0.add("Get device info")
         list0.add("Configure")
+        list0.add("Set up wifi connection")
         list0.add("Test connection")
 
         progress.setStepsViewIndicatorComplectingPosition(-1)
@@ -64,14 +73,22 @@ class RegisterDevice : AppCompatActivity() {
                 .setStepsViewIndicatorAttentionIcon(ContextCompat.getDrawable(this@RegisterDevice, R.drawable.attention))
     }
 
-    private fun StartRegistering() {
+    private fun GetDeviceInfo() {
         SetProgress(STATUS.DeviceInfo)
         val call = McuApiService.GetService().GetDeviceInfo()
         call.enqueue(object : Callback<DeviceInfo> {
             override fun onResponse(call: Call<DeviceInfo>?, response: Response<DeviceInfo>?) {
                 if (response != null) {
-                    response.raw().body().toString()
-                    Log.wtf("SUCCESS", response.raw().body().toString())
+                    if (response.isSuccessful) {
+                        Log.d(TAG, response.body()?.Client?.Ap_Ssid)
+                        if (response.body()?.Client?.Ap_Ssid == SSID)
+                            ConfigureDevice()
+                    } else {
+                        Log.wtf(TAG, response.errorBody()?.string())
+                        Toast.makeText(applicationContext, "FAIL", Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    Toast.makeText(applicationContext, "FAIL", Toast.LENGTH_SHORT).show()
                 }
             }
 
@@ -81,6 +98,95 @@ class RegisterDevice : AppCompatActivity() {
                 Log.wtf("FAIL", t?.message)
             }
         })
+    }
+
+    var ApPass :String? = null
+    private fun ConfigureDevice() {
+        SetProgress(STATUS.Configure)
+        val randomGenerator = RandomString(15, SecureRandom())
+        ApPass = randomGenerator.nextString()
+
+        val call = McuApiService.GetService().SetConfigurationParameter("-WIFI_AP_PASS="+ApPass)
+        call.enqueue(object : Callback<ConfigureResponse> {
+            override fun onResponse(call: Call<ConfigureResponse>?, response: Response<ConfigureResponse>?) {
+                if (response != null) {
+                    if (response.isSuccessful) {
+                        if(response.body()!!.SUCCESS==true)SetUpWifiConnection()
+                    } else {
+                        Log.wtf(TAG, response.errorBody()?.string())
+                        Toast.makeText(applicationContext, "FAIL", Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    Toast.makeText(applicationContext, "FAIL", Toast.LENGTH_SHORT).show()
+                }
+            }
+
+            override fun onFailure(call: Call<ConfigureResponse>?, t: Throwable?) {
+                t?.printStackTrace()
+                Toast.makeText(applicationContext, "FAIL", Toast.LENGTH_SHORT).show()
+                Log.wtf("FAIL", t?.message)
+            }
+        })
+    }
+
+    private fun ConfigureDeviceSetConfirmed() {
+        val call = McuApiService.GetService().SetConfigurationParameter("-WORKING_MODE=CONFIGURED")
+
+        call.enqueue(object : Callback<ConfigureResponse> {
+            override fun onResponse(call: Call<ConfigureResponse>?, response: Response<ConfigureResponse>?) {
+                if (response != null) {
+                    if (response.isSuccessful) {
+                        if(response.body()!!.SUCCESS==true)ConfigureDeviceSetConfirmed()
+                    } else {
+                        Log.wtf(TAG, response.errorBody()?.string())
+                        Toast.makeText(applicationContext, "FAIL", Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    Toast.makeText(applicationContext, "FAIL", Toast.LENGTH_SHORT).show()
+                }
+            }
+
+            override fun onFailure(call: Call<ConfigureResponse>?, t: Throwable?) {
+                t?.printStackTrace()
+                Toast.makeText(applicationContext, "FAIL", Toast.LENGTH_SHORT).show()
+                Log.wtf("FAIL", t?.message)
+            }
+        })
+    }
+
+    private fun SetUpWifiConnection() {
+        SetProgress(STATUS.WiFiSetUp)
+        val body  = RequestBody.create(MediaType.parse("text/plain"),"-SSID=TP-LINK\n-PASS=grzaslewicz")
+
+        val call = McuApiService.GetService().ConnectToAp(body)
+        call.enqueue(object : Callback<ConnectToApResponse> {
+            override fun onResponse(call: Call<ConnectToApResponse>?, response: Response<ConnectToApResponse>?) {
+                if (response != null) {
+                    if (response.isSuccessful) {
+                        if(response.body()!!.SUCCESS==true)TestConnection()
+                    } else {
+                        Log.wtf(TAG, response.errorBody()?.string())
+                        Toast.makeText(applicationContext, "FAIL", Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    Toast.makeText(applicationContext, "FAIL", Toast.LENGTH_SHORT).show()
+                }
+            }
+
+            override fun onFailure(call: Call<ConnectToApResponse>?, t: Throwable?) {
+                t?.printStackTrace()
+                Toast.makeText(applicationContext, "FAIL", Toast.LENGTH_SHORT).show()
+                Log.wtf("FAIL", t?.message)
+            }
+        })
+
+    }
+
+    private fun TestConnection() {
+        SetProgress(STATUS.TestConnection)
+
+
+        SetProgress(STATUS.Done)
     }
 
     private fun ConnectToDevice() {
@@ -118,7 +224,7 @@ class RegisterDevice : AppCompatActivity() {
                 Log.d("SSID", "-" + wifi!!.connectionInfo.ssid + "-")
                 if (isWiFi && wifi!!.connectionInfo.ssid == "\"" + SSID + "\"") {
                     Log.d("WIFI", "Connected to " + SSID)
-                    StartRegistering()
+                    GetDeviceInfo()
                 } else {
                     CheckForConnectionSuccess()
                 }
@@ -133,8 +239,9 @@ class RegisterDevice : AppCompatActivity() {
             STATUS.Connecting -> progress.setStepsViewIndicatorComplectingPosition(0)
             STATUS.DeviceInfo -> progress.setStepsViewIndicatorComplectingPosition(1)
             STATUS.Configure -> progress.setStepsViewIndicatorComplectingPosition(2)
-            STATUS.TestConnection -> progress.setStepsViewIndicatorComplectingPosition(3)
-            STATUS.Done -> progress.setStepsViewIndicatorComplectingPosition(4)
+            STATUS.WiFiSetUp -> progress.setStepsViewIndicatorComplectingPosition(3)
+            STATUS.TestConnection -> progress.setStepsViewIndicatorComplectingPosition(4)
+            STATUS.Done -> progress.setStepsViewIndicatorComplectingPosition(5)
 
         }
     }
@@ -148,6 +255,6 @@ class RegisterDevice : AppCompatActivity() {
     }
 
     enum class STATUS {
-        Connecting, DeviceInfo, Configure, TestConnection, Done
+        Connecting, DeviceInfo, Configure,WiFiSetUp, TestConnection, Done
     }
 }

@@ -1,11 +1,16 @@
 package jakubgrzaslewicz.pl.mcucontrol.Classes
 
 import jakubgrzaslewicz.pl.mcucontrol.Interfaces.APIClient
+import okhttp3.MediaType
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import okhttp3.logging.HttpLoggingInterceptor
-
+import okhttp3.RequestBody
+import okhttp3.ResponseBody
+import okio.ByteString
+import retrofit2.Converter
+import java.io.IOException
 
 
 /**
@@ -34,4 +39,5 @@ class McuApiService {
 
         return retrofit.create(APIClient::class.java)
     }
+
 }

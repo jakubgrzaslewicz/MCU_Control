@@ -29,6 +29,7 @@
             android:textAlignment="center"
             android:textAppearance="@style/TextAppearance.AppCompat.Display1"
             android:textSize="24sp"
+            android:padding="15dp"
             app:fontFamily="sans-serif-smallcaps" />
 
         <com.baoyachi.stepview.VerticalStepView

@@ -22,10 +22,11 @@ import android.content.Context
 import android.support.v4.app.ActivityCompat.requestPermissions
 import android.util.Log
 import android.widget.Toast
+import jakubgrzaslewicz.pl.mcucontrol.Classes.Activity
 import jakubgrzaslewicz.pl.mcucontrol.R
 
 
-class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelectedListener {
+class MainActivity : Activity(), NavigationView.OnNavigationItemSelectedListener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

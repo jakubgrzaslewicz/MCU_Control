@@ -7,7 +7,9 @@ import com.google.gson.annotations.SerializedName
  */
 
 class DeviceInfo {
+    @SerializedName("MCU_HUB_CLIENT")
     var Client: ClientDetails? = null
+    @SerializedName("DEVICE")
     var Device: HardwareSpecification? = null
 
     inner class ClientDetails {
@@ -29,7 +31,7 @@ class DeviceInfo {
         var DevVer: Int = 0
 
         @SerializedName("FLASH_SPEED")
-        var FlashSpeed: Long = 0
+        var FlashSpeed: Int = 0
 
         @SerializedName("MINOR_VER")
         var MinorVer: Int = 0
@@ -41,6 +43,6 @@ class DeviceInfo {
         var MajorVer: Int = 0
 
         @SerializedName("FLASH_ID")
-        var FlashId: Long = 0
+        var FlashId: Int = 0
     }
 }

@@ -13,13 +13,14 @@ import android.support.v7.app.AppCompatActivity
 import android.util.Log
 import android.view.View
 import android.widget.*
+import jakubgrzaslewicz.pl.mcucontrol.Classes.Activity
 import jakubgrzaslewicz.pl.mcucontrol.R
 import kotlinx.android.synthetic.main.activity_add_device.*
 import kotlinx.android.synthetic.main.content_add_device.*
 import org.w3c.dom.Text
 
 
-class AddDevice : AppCompatActivity() {
+class AddDevice : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
