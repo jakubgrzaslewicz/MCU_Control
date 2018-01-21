@@ -8,4 +8,8 @@
     <string name="title_activity_add_device">Dodaj urządzenie</string>
     <string name="wyszukiwanie_urz_dze">Wyszukiwanie urządzeń</string>
     <string name="title_activity_register_device">Rejestracja urządzenia</string>
+    <string name="title_activity_network_credentials">Skonfiguruj sieć Wi-Fi</string>
+    <string name="has_o_wi_fi">Hasło Wi-Fi</string>
+    <string name="select_network">Wybierz sieć Wi-Fi</string>
+
 </resources>

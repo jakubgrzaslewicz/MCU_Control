@@ -43,10 +43,6 @@ class RegisterDevice : Activity() {
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
 
-        val s = "{\"MCU_HUB_CLIENT\":{\"AP_SSID\":\"MCU-HUB-Client-3P3750\",\"JSON-API-VER\":\"1.0\"},\"DEVICE\":{\"CHIP_ID\":9068572,\"FLASH_MODE\":2,\"DEV_VER\":0,\"FLASH_SPEED\":40000000,\"MINOR_VER\":1,\"FLASH_SIZE\":4096,\"MAJOR_VER\":2,\"FLASH_ID\":1458208}}"
-        val obj = Gson().fromJson<DeviceInfo>(s, DeviceInfo::class.java)
-        Log.d(TAG, obj.Client?.Ap_Ssid)
-
         InitializeProgress()
         InitializeWifiManager()
         ConnectToDevice()

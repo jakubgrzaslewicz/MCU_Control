@@ -11,12 +11,13 @@ import okhttp3.ResponseBody
 import okio.ByteString
 import retrofit2.Converter
 import java.io.IOException
+import java.util.concurrent.TimeUnit
 
 
 /**
-* Created by Jakub Grząślewicz on 15.01.2018.
-*
-*/
+ * Created by Jakub Grząślewicz on 15.01.2018.
+ *
+ */
 
 class McuApiService {
     fun GetService(): APIClient {
@@ -27,6 +28,9 @@ class McuApiService {
 
         val client = OkHttpClient.Builder()
                 .addInterceptor(interceptor)
+                .connectTimeout(30, TimeUnit.SECONDS)
+                .readTimeout(30, TimeUnit.SECONDS)
+                .writeTimeout(30, TimeUnit.SECONDS)
                 .build()
         val builder = Retrofit.Builder()
                 .baseUrl(API_BASE_URL)
