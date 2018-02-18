@@ -18,24 +18,31 @@ import android.os.Handler
 import android.net.ConnectivityManager
 import android.support.v4.content.ContextCompat
 import com.google.gson.Gson
+import io.realm.Realm
 import jakubgrzaslewicz.pl.mcucontrol.Classes.Activity
+import jakubgrzaslewicz.pl.mcucontrol.Classes.Parameters.RegisterDeviceParameters
 import jakubgrzaslewicz.pl.mcucontrol.Classes.RandomString
 import jakubgrzaslewicz.pl.mcucontrol.Models.ConfigureResponse
 import jakubgrzaslewicz.pl.mcucontrol.Models.ConnectToApResponse
+import jakubgrzaslewicz.pl.mcucontrol.RealmModels.Device
 import okhttp3.MediaType
 import okhttp3.RequestBody
 import java.security.SecureRandom
+import java.util.*
 
 
 class RegisterDevice : Activity() {
+
     var SSID: String = ""
+    var WiFiPassword: String = ""
     var wifi: WifiManager? = null
     var McuApiService = jakubgrzaslewicz.pl.mcucontrol.Classes.McuApiService()
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_register_device)
         setSupportActionBar(toolbar)
-        SSID = intent.getStringExtra("SSID")
+        SSID = intent.getStringExtra(RegisterDeviceParameters.SSIDKey)
+        WiFiPassword = intent.getStringExtra(RegisterDeviceParameters.WiFiPasswordKey)
         if (!SSID.isEmpty())
             deviceSSID.text = SSID
         else
@@ -96,18 +103,18 @@ class RegisterDevice : Activity() {
         })
     }
 
-    var ApPass :String? = null
+    var ApPass: String? = null
     private fun ConfigureDevice() {
         SetProgress(STATUS.Configure)
         val randomGenerator = RandomString(15, SecureRandom())
         ApPass = randomGenerator.nextString()
 
-        val call = McuApiService.GetService().SetConfigurationParameter("-WIFI_AP_PASS="+ApPass)
+        val call = McuApiService.GetService().SetConfigurationParameter("-WIFI_AP_PASS=" + ApPass)
         call.enqueue(object : Callback<ConfigureResponse> {
             override fun onResponse(call: Call<ConfigureResponse>?, response: Response<ConfigureResponse>?) {
                 if (response != null) {
                     if (response.isSuccessful) {
-                        if(response.body()!!.SUCCESS==true)SetUpWifiConnection()
+                        if (response.body()!!.SUCCESS == true) SetUpWifiConnection()
                     } else {
                         Log.wtf(TAG, response.errorBody()?.string())
                         Toast.makeText(applicationContext, "FAIL", Toast.LENGTH_SHORT).show()
@@ -132,7 +139,7 @@ class RegisterDevice : Activity() {
             override fun onResponse(call: Call<ConfigureResponse>?, response: Response<ConfigureResponse>?) {
                 if (response != null) {
                     if (response.isSuccessful) {
-                        if(response.body()!!.SUCCESS==true)ConfigureDeviceSetConfirmed()
+                        if (response.body()!!.SUCCESS == true) ConfigureDeviceSetConfirmed()
                     } else {
                         Log.wtf(TAG, response.errorBody()?.string())
                         Toast.makeText(applicationContext, "FAIL", Toast.LENGTH_SHORT).show()
@@ -152,14 +159,14 @@ class RegisterDevice : Activity() {
 
     private fun SetUpWifiConnection() {
         SetProgress(STATUS.WiFiSetUp)
-        val body  = RequestBody.create(MediaType.parse("text/plain"),"-SSID=TP-LINK\n-PASS=grzaslewicz")
+        val body = RequestBody.create(MediaType.parse("text/plain"), "-SSID=TP-LINK\n-PASS=grzaslewicz")
 
         val call = McuApiService.GetService().ConnectToAp(body)
         call.enqueue(object : Callback<ConnectToApResponse> {
             override fun onResponse(call: Call<ConnectToApResponse>?, response: Response<ConnectToApResponse>?) {
                 if (response != null) {
                     if (response.isSuccessful) {
-                        if(response.body()!!.SUCCESS==true)TestConnection()
+                        if (response.body()!!.SUCCESS == true) TestConnection()
                     } else {
                         Log.wtf(TAG, response.errorBody()?.string())
                         Toast.makeText(applicationContext, "FAIL", Toast.LENGTH_SHORT).show()
@@ -215,15 +222,18 @@ class RegisterDevice : Activity() {
                 val cm = applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
                 val activeNetwork = cm.activeNetworkInfo
-                val isWiFi = activeNetwork.type == ConnectivityManager.TYPE_WIFI
-                Log.d("isWifi", isWiFi.toString())
-                Log.d("SSID", "-" + wifi!!.connectionInfo.ssid + "-")
-                if (isWiFi && wifi!!.connectionInfo.ssid == "\"" + SSID + "\"") {
-                    Log.d("WIFI", "Connected to " + SSID)
-                    GetDeviceInfo()
-                } else {
-                    CheckForConnectionSuccess()
-                }
+                if (activeNetwork != null) {
+                    val isWiFi = activeNetwork.type == ConnectivityManager.TYPE_WIFI
+
+                    Log.d("isWifi", isWiFi.toString())
+                    Log.d("SSID", "-" + wifi!!.connectionInfo.ssid + "-")
+                    if (isWiFi && wifi!!.connectionInfo.ssid == "\"" + SSID + "\"") {
+                        Log.d("WIFI", "Connected to " + SSID)
+                        GetDeviceInfo()
+                    } else {
+                        CheckForConnectionSuccess()
+                    }
+                } else CheckForConnectionSuccess()
             }, 1000)
         } else {
             Toast.makeText(applicationContext, "Connection failed", Toast.LENGTH_SHORT).show()
@@ -237,8 +247,28 @@ class RegisterDevice : Activity() {
             STATUS.Configure -> progress.setStepsViewIndicatorComplectingPosition(2)
             STATUS.WiFiSetUp -> progress.setStepsViewIndicatorComplectingPosition(3)
             STATUS.TestConnection -> progress.setStepsViewIndicatorComplectingPosition(4)
-            STATUS.Done -> progress.setStepsViewIndicatorComplectingPosition(5)
+            STATUS.Done -> {
+                progress.setStepsViewIndicatorComplectingPosition(5)
+                SaveDeviceConfig()
+            }
 
+        }
+    }
+
+    private fun SaveDeviceConfig() {
+        realm = Realm.getDefaultInstance()
+        realm.beginTransaction()
+        try {
+            val device = realm.createObject(Device::class.java,SSID)
+            device.added_time = Date()
+            device.password = ApPass
+
+        } catch (e: Exception) {
+            e.printStackTrace()
+            realm.cancelTransaction()
+        } finally {
+            if (realm.isInTransaction)
+                realm.commitTransaction()
         }
     }
 
@@ -251,6 +281,6 @@ class RegisterDevice : Activity() {
     }
 
     enum class STATUS {
-        Connecting, DeviceInfo, Configure,WiFiSetUp, TestConnection, Done
+        Connecting, DeviceInfo, Configure, WiFiSetUp, TestConnection, Done
     }
 }

@@ -1,40 +1,28 @@
 package jakubgrzaslewicz.pl.mcucontrol.Activities
 
-import android.animation.Animator
-import android.animation.AnimatorListenerAdapter
-import android.annotation.TargetApi
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
-import android.support.design.widget.Snackbar
-import android.support.v7.app.AppCompatActivity
-import android.app.LoaderManager.LoaderCallbacks
-import android.database.Cursor
-import android.net.Uri
-import android.os.AsyncTask
-import android.os.Build
-import android.os.Bundle
-import android.provider.ContactsContract
-import android.text.TextUtils
-import android.view.View
-import android.view.inputmethod.EditorInfo
-import android.widget.ArrayAdapter
-import android.widget.TextView
-
-import java.util.ArrayList
-import android.Manifest.permission.READ_CONTACTS
-import android.content.*
 import android.net.wifi.ScanResult
 import android.net.wifi.WifiManager
+import android.os.Bundle
 import android.os.Handler
 import android.support.v4.app.ActivityCompat
+import android.text.Editable
+import android.text.TextWatcher
 import android.util.Log
-import android.widget.AdapterView
+import android.view.View
 import android.widget.Toast
 import jakubgrzaslewicz.pl.mcucontrol.Classes.Activity
 import jakubgrzaslewicz.pl.mcucontrol.Classes.NetworkSpinnerArrayAdapter
+import jakubgrzaslewicz.pl.mcucontrol.Classes.Parameters.NetworkCredentialsActivityParameters
+import jakubgrzaslewicz.pl.mcucontrol.Classes.Parameters.RegisterDeviceParameters
 import jakubgrzaslewicz.pl.mcucontrol.R
-
 import kotlinx.android.synthetic.main.activity_network_credentials.*
 import kotlinx.android.synthetic.main.content_network_credentials.*
+import java.util.*
 
 /**
  * A login screen that offers login via email/password.
@@ -47,13 +35,40 @@ class NetworkCredentialsActivity : Activity() {
         setSupportActionBar(toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
-        SSID = intent.getStringExtra("SSID")
+        SSID = intent.getStringExtra(NetworkCredentialsActivityParameters.SSIDKey)
         RequestPermissions()
         RegisterEvents()
+        CheckPassword()
+    }
+
+    private fun CheckPassword() {
+        val text = password.text
+        next_button.isEnabled = !text.isEmpty()
     }
 
     private fun RegisterEvents() {
+        password.addTextChangedListener(object : TextWatcher {
+            override fun afterTextChanged(p0: Editable?) {
+                CheckPassword()
+            }
 
+            override fun beforeTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {
+            }
+
+            override fun onTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {
+            }
+        })
+        next_button.setOnClickListener(ButtonClick)
+    }
+
+    private var ButtonClick = View.OnClickListener {
+        if (password.text.isNotEmpty()) {
+            val intent = Intent(NetworkCredentialsActivity@ this, RegisterDevice::class.java)
+            intent.putExtra(RegisterDeviceParameters.SSIDKey,SSID)
+            Log.d(TAG,password.text.toString())
+            intent.putExtra(RegisterDeviceParameters.WiFiPasswordKey,password.text.toString().trim())
+            startActivity(intent)
+        }
     }
 
     private fun RequestPermissions() {
@@ -85,7 +100,6 @@ class NetworkCredentialsActivity : Activity() {
     val WifiResultReceiver: BroadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(c: Context, intent: Intent) {
             counter++
-            Log.d("SCAN", "RECEIVED")
             scanResults.clear()
             wifi?.scanResults!!
                     .filterNot { it.SSID.startsWith("MCU-HUB-Client") }
@@ -99,7 +113,6 @@ class NetworkCredentialsActivity : Activity() {
         if (counter < 12)
             wifi?.startScan()
         else {
-            Log.d("WIFI", "ReRegistering receiver")
             counter = 0
             unregisterReceiver(WifiResultReceiver)
             registerReceiver(WifiResultReceiver, IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION))
@@ -113,7 +126,7 @@ class NetworkCredentialsActivity : Activity() {
 
     override fun onResume() {
         registerReceiver(WifiResultReceiver, IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION))
-
+        CheckPassword()
         super.onResume()
 
     }

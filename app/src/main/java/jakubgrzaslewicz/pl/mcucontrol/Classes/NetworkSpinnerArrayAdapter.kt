@@ -2,21 +2,14 @@ package jakubgrzaslewicz.pl.mcucontrol.Classes
 
 import android.content.Context
 import android.net.wifi.ScanResult
-import android.net.wifi.WifiManager
 import android.net.wifi.WifiManager.calculateSignalLevel
 import android.support.v7.widget.AppCompatTextView
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ArrayAdapter
 import android.widget.BaseAdapter
 import android.widget.ImageView
-import android.widget.TextView
-import com.google.gson.Gson
-import jakubgrzaslewicz.pl.mcucontrol.Classes.Activity.TAG
 import jakubgrzaslewicz.pl.mcucontrol.R
-import kotlinx.android.synthetic.main.network_spinner_item.view.*
 
 /**
  * Created by Jakub Grząślewicz on 21.01.2018.

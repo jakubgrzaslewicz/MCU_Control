@@ -14,7 +14,9 @@ import android.util.Log
 import android.view.View
 import android.widget.*
 import jakubgrzaslewicz.pl.mcucontrol.Classes.Activity
+import jakubgrzaslewicz.pl.mcucontrol.Classes.Parameters.NetworkCredentialsActivityParameters
 import jakubgrzaslewicz.pl.mcucontrol.R
+import jakubgrzaslewicz.pl.mcucontrol.RealmModels.Device
 import kotlinx.android.synthetic.main.activity_add_device.*
 import kotlinx.android.synthetic.main.content_add_device.*
 import org.w3c.dom.Text
@@ -27,8 +29,17 @@ class AddDevice : Activity() {
         setContentView(R.layout.activity_add_device)
         setSupportActionBar(toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        LoadRegisteredDevices()
         RequestPermissions()
         RegisterEvents()
+
+    }
+var RegisteredDevices : ArrayList<String>?=null
+    private fun LoadRegisteredDevices() {
+        RegisteredDevices= ArrayList()
+        realm.where(Device::class.java).distinctValues("access_point_name").findAll().forEach({
+            it.access_point_name?.let { it1 -> RegisteredDevices!!.add(it1) }
+        })
     }
 
     private fun RegisterEvents() {
@@ -39,7 +50,7 @@ class AddDevice : Activity() {
 
     private fun OpenConnectionActivity(SSID: String) {
         val i = Intent(this@AddDevice, NetworkCredentialsActivity::class.java)
-        i.putExtra("SSID", SSID)
+        i.putExtra(NetworkCredentialsActivityParameters.SSIDKey, SSID)
         startActivity(i)
     }
 
@@ -67,6 +78,7 @@ class AddDevice : Activity() {
             scanResults.clear()
             wifi?.scanResults!!
                     .filter { it.SSID.startsWith("MCU-HUB-Client") }
+                    .filterNot { RegisteredDevices!!.contains(it.SSID) }
                     .forEach { scanResults.add(it.SSID) }
             scanResultsAdapter?.notifyDataSetChanged()
             Scan()
